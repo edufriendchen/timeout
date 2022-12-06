@@ -34,7 +34,7 @@ import (
 )
 
 var (
-	// DefaultTimeoutErr Error result returned by default timeout
+	// ErrDefaultTimeout Error result returned by default timeout
 	ErrDefaultTimeout = errors.New("request timeout")
 	// DefaultNormalExitResult Default normal return result
 	DefaultNormalExitResult = map[string]interface{}{"message": "normal exit"}
@@ -104,10 +104,11 @@ func Default(h Handler, t time.Duration) app.HandlerFunc {
 				// Throw out actively
 				c.JSON(http.StatusOK, err.Error())
 				return
+			} else {
+				// Normal exit
+				c.JSON(http.StatusOK, DefaultNormalExitResult)
+				return
 			}
-			// Normal exit
-			c.JSON(http.StatusOK, DefaultNormalExitResult)
-			return
 		}
 	}
 }
