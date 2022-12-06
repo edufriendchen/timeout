@@ -35,14 +35,14 @@ import (
 
 var (
 	// DefaultTimeoutErr Error result returned by default timeout
-	DefaultTimeoutErr = errors.New("request timeout")
+	ErrDefaultTimeout = errors.New("request timeout")
 	// DefaultNormalExitResult Default normal return result
 	DefaultNormalExitResult = map[string]interface{}{"message": "normal exit"}
 )
 
 // SetTimeoutErr Set the error returned by the timeout
 func SetTimeoutErr(err error) {
-	DefaultTimeoutErr = err
+	ErrDefaultTimeout = err
 }
 
 // SetNormalExitResult Set the normal return result
@@ -67,7 +67,7 @@ func New(h Handler, t time.Duration) app.HandlerFunc {
 		if err := h(timeoutContext, c); err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				// context timeout exits
-				c.JSON(http.StatusRequestTimeout, DefaultTimeoutErr.Error())
+				c.JSON(http.StatusRequestTimeout, ErrDefaultTimeout.Error())
 				return
 			} else {
 				// Throw out actively
@@ -97,7 +97,7 @@ func Default(h Handler, t time.Duration) app.HandlerFunc {
 		select {
 		case <-timeoutContext.Done():
 			// context timeout exits
-			c.JSON(http.StatusRequestTimeout, DefaultTimeoutErr.Error())
+			c.JSON(http.StatusRequestTimeout, ErrDefaultTimeout.Error())
 			return
 		case err := <-done:
 			if err != nil {

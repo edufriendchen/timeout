@@ -57,7 +57,7 @@ func TestTimeoutNew(t *testing.T) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
 		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+DefaultTimeoutErr.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -104,7 +104,7 @@ func TestTimeoutNew_Set(t *testing.T) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
 		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+DefaultTimeoutErr.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -148,7 +148,7 @@ func TestTimeoutDefault(t *testing.T) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
 		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+DefaultTimeoutErr.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -195,7 +195,7 @@ func TestTimeoutDefault_Set(t *testing.T) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
 		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+DefaultTimeoutErr.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
