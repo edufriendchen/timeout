@@ -28,9 +28,10 @@ package timeout
 import (
 	"context"
 	"errors"
-	"github.com/cloudwego/hertz/pkg/app"
 	"net/http"
 	"time"
+
+	"github.com/cloudwego/hertz/pkg/app"
 )
 
 var (
@@ -74,10 +75,11 @@ func New(h Handler, t time.Duration) app.HandlerFunc {
 				c.JSON(http.StatusOK, err.Error())
 				return
 			}
+		} else {
+			// Normal exit
+			c.JSON(http.StatusOK, DefaultNormalExitResult)
+			return
 		}
-		// Normal exit
-		c.JSON(http.StatusOK, DefaultNormalExitResult)
-		return
 	}
 }
 

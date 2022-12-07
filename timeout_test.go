@@ -29,13 +29,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/test/assert"
 	"github.com/cloudwego/hertz/pkg/common/ut"
-	"net/http"
-	"testing"
-	"time"
 )
 
 // go test -run TestTimeoutNew
