@@ -60,11 +60,12 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"time"
+
 	"github.com/cloudwego/hertz-contrib/timeout"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"net/http"
-	"time"
 )
 
 func main() {
@@ -118,11 +119,12 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"time"
+	
 	"github.com/cloudwego/hertz-contrib/timeout"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"net/http"
-	"time"
 )
 
 func main() {
@@ -166,11 +168,12 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"time"
+	
 	"github.com/cloudwego/hertz-contrib/timeout"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
-	"net/http"
-	"time"
 )
 
 func main() {
