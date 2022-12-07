@@ -56,10 +56,7 @@ type Handler = func(ctx context.Context, c *app.RequestContext) error
 
 // New implementation of timeout middleware.
 // To use this method, you need to add the following code to the Handler you defined to listen for the context timeout.
-// select {
-//	case <-ctx.Done():
-//		return context.DeadlineExceeded
-//	}
+// select { case <-ctx.Done(): return context.DeadlineExceeded }
 func New(h Handler, t time.Duration) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		c.Next(ctx)
