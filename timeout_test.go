@@ -37,28 +37,29 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/test/assert"
 	"github.com/cloudwego/hertz/pkg/common/ut"
+	"github.com/cloudwego/hertz/pkg/common/utils"
 )
 
-// go test -run TestTimeoutNew
-func TestTimeoutNew(t *testing.T) {
+// go test -run TestDefaultOptions
+func TestDefaultOptions(t *testing.T) {
 	h := server.Default()
-	ping := New(func(ctx context.Context, c *app.RequestContext) error {
+	ping := func(ctx context.Context, c *app.RequestContext) {
 		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
-		if err := sleepWithContext(ctx, sleepTime); err != nil {
-			return err
+		if err := sleepWithContext(ctx, sleepTime, context.DeadlineExceeded); err != nil {
+			_ = c.Error(err)
+			return
+		} else {
+			c.JSON(http.StatusOK, utils.H{"message": "test"})
+			return
 		}
-		return nil
-	}, 100*time.Millisecond)
-	throw := New(func(ctx context.Context, c *app.RequestContext) error {
-		return errors.New("throw")
-	}, 100*time.Millisecond)
+	}
+	h.Use(New())
 	h.GET("/ping/:sleepTime", ping)
-	h.GET("/throw", throw)
 	testTimeoutFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
-		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
+		assert.DeepEqual(t, "", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -67,45 +68,34 @@ func TestTimeoutNew(t *testing.T) {
 		err := json.Unmarshal(resp.Body(), &data)
 		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
 		assert.Nil(t, err)
-		assert.DeepEqual(t, DefaultNormalExitResult, data)
+		assert.DeepEqual(t, map[string]interface{}{"message": "test"}, data)
 	}
-	testThrowFunc := func(timeoutStr string) {
-		w := ut.PerformRequest(h.Engine, "GET", "/throw", nil)
-		resp := w.Result()
-		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
-		assert.NotNil(t, resp.Body())
-	}
-	testTimeoutFunc("800")
-	testTimeoutFunc("500")
-	testNormalFunc("50")
-	testNormalFunc("30")
-	testThrowFunc("50")
-	testThrowFunc("30")
+	testTimeoutFunc("4000")
+	testNormalFunc("2000")
 }
 
-// go test -run TestTimeoutNew_Set
-func TestTimeoutNew_Set(t *testing.T) {
+// go test -run TestWithTimeoutHandler
+func TestWithTimeoutHandler(t *testing.T) {
 	h := server.Default()
-	// set
-	SetTimeoutErr(errors.New("test"))
-	SetNormalExitResult(map[string]interface{}{"message": "test"})
-	ping := New(func(ctx context.Context, c *app.RequestContext) error {
+	ping := func(ctx context.Context, c *app.RequestContext) {
 		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
-		if err := sleepWithContext(ctx, sleepTime); err != nil {
-			return err
+		if err := sleepWithContext(ctx, sleepTime, context.DeadlineExceeded); err != nil {
+			_ = c.Error(err)
+			return
+		} else {
+			c.JSON(http.StatusOK, utils.H{"message": "test"})
+			return
 		}
-		return nil
-	}, 100*time.Millisecond)
-	throw := New(func(ctx context.Context, c *app.RequestContext) error {
-		return errors.New("throw")
-	}, 100*time.Millisecond)
+	}
+	h.Use(New(WithTimeoutHandler(func(c context.Context, ctx *app.RequestContext) {
+		ctx.String(http.StatusOK, "request timeout")
+	})))
 	h.GET("/ping/:sleepTime", ping)
-	h.GET("/throw", throw)
 	testTimeoutFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
-		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
+		assert.DeepEqual(t, "request timeout", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -114,42 +104,32 @@ func TestTimeoutNew_Set(t *testing.T) {
 		err := json.Unmarshal(resp.Body(), &data)
 		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
 		assert.Nil(t, err)
-		assert.DeepEqual(t, DefaultNormalExitResult, data)
+		assert.DeepEqual(t, map[string]interface{}{"message": "test"}, data)
 	}
-	testThrowFunc := func(timeoutStr string) {
-		w := ut.PerformRequest(h.Engine, "GET", "/throw", nil)
-		resp := w.Result()
-		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
-		assert.NotNil(t, resp.Body())
-	}
-	testTimeoutFunc("800")
-	testTimeoutFunc("500")
-	testNormalFunc("50")
-	testNormalFunc("30")
-	testThrowFunc("50")
-	testThrowFunc("30")
+	testTimeoutFunc("4000")
+	testNormalFunc("2000")
 }
 
-// go test -run TestTimeoutDefault
-func TestTimeoutDefault(t *testing.T) {
+// go test -run TestWithTiming
+func TestWithTiming(t *testing.T) {
 	h := server.Default()
-	ping := Default(func(ctx context.Context, c *app.RequestContext) error {
+	ping := func(ctx context.Context, c *app.RequestContext) {
 		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
-		if err := sleepWithContext(ctx, sleepTime); err != nil {
-			return err
+		if err := sleepWithContext(ctx, sleepTime, context.DeadlineExceeded); err != nil {
+			_ = c.Error(err)
+			return
+		} else {
+			c.JSON(http.StatusOK, utils.H{"message": "test"})
+			return
 		}
-		return nil
-	}, 100*time.Millisecond)
-	throw := Default(func(ctx context.Context, c *app.RequestContext) error {
-		return errors.New("throw")
-	}, 100*time.Millisecond)
+	}
+	h.Use(New(WithTiming(2 * time.Second)))
 	h.GET("/ping/:sleepTime", ping)
-	h.GET("/throw", throw)
 	testTimeoutFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
-		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
+		assert.DeepEqual(t, "", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -158,45 +138,32 @@ func TestTimeoutDefault(t *testing.T) {
 		err := json.Unmarshal(resp.Body(), &data)
 		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
 		assert.Nil(t, err)
-		assert.DeepEqual(t, DefaultNormalExitResult, data)
+		assert.DeepEqual(t, map[string]interface{}{"message": "test"}, data)
 	}
-	testThrowFunc := func(timeoutStr string) {
-		w := ut.PerformRequest(h.Engine, "GET", "/throw", nil)
-		resp := w.Result()
-		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
-		assert.NotNil(t, resp.Body())
-	}
-	testTimeoutFunc("800")
-	testTimeoutFunc("500")
-	testNormalFunc("50")
-	testNormalFunc("30")
-	testThrowFunc("50")
-	testThrowFunc("30")
+	testTimeoutFunc("3000")
+	testNormalFunc("1000")
 }
 
-// go test -run TestTimeoutDefault_Set
-func TestTimeoutDefault_Set(t *testing.T) {
+// go test -run TestWithTErr
+func TestWithTErr(t *testing.T) {
 	h := server.Default()
-	// set
-	SetTimeoutErr(errors.New("test"))
-	SetNormalExitResult(map[string]interface{}{"message": "test"})
-	ping := Default(func(ctx context.Context, c *app.RequestContext) error {
+	ping := func(ctx context.Context, c *app.RequestContext) {
 		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
-		if err := sleepWithContext(ctx, sleepTime); err != nil {
-			return err
+		if err := sleepWithContext(ctx, sleepTime, errors.New("test")); err != nil {
+			_ = c.Error(err)
+			return
+		} else {
+			c.JSON(http.StatusOK, utils.H{"message": "test"})
+			return
 		}
-		return nil
-	}, 100*time.Millisecond)
-	throw := Default(func(ctx context.Context, c *app.RequestContext) error {
-		return errors.New("throw")
-	}, 100*time.Millisecond)
+	}
+	h.Use(New(WithTErr(errors.New("test"))))
 	h.GET("/ping/:sleepTime", ping)
-	h.GET("/throw", throw)
 	testTimeoutFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
 		resp := w.Result()
-		assert.DeepEqual(t, http.StatusRequestTimeout, resp.StatusCode())
-		assert.DeepEqual(t, "\""+ErrDefaultTimeout.Error()+"\"", string(resp.Body()))
+		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
+		assert.DeepEqual(t, "", string(resp.Body()))
 	}
 	testNormalFunc := func(timeoutStr string) {
 		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
@@ -205,27 +172,57 @@ func TestTimeoutDefault_Set(t *testing.T) {
 		err := json.Unmarshal(resp.Body(), &data)
 		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
 		assert.Nil(t, err)
-		assert.DeepEqual(t, DefaultNormalExitResult, data)
+		assert.DeepEqual(t, map[string]interface{}{"message": "test"}, data)
 	}
-	testThrowFunc := func(timeoutStr string) {
-		w := ut.PerformRequest(h.Engine, "GET", "/throw", nil)
-		resp := w.Result()
-		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
-		assert.NotNil(t, resp.Body())
-	}
-	testTimeoutFunc("800")
-	testTimeoutFunc("500")
-	testNormalFunc("50")
-	testNormalFunc("30")
-	testThrowFunc("50")
-	testThrowFunc("30")
+	testTimeoutFunc("4000")
+	testNormalFunc("2000")
 }
 
-func sleepWithContext(ctx context.Context, d time.Duration) error {
+// go test -run TestWithAll
+func TestWithAll(t *testing.T) {
+	h := server.Default()
+	testErr := errors.New("test")
+	ping := func(ctx context.Context, c *app.RequestContext) {
+		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
+		if err := sleepWithContext(ctx, sleepTime, testErr); err != nil {
+			_ = c.Error(err)
+			return
+		} else {
+			c.JSON(http.StatusOK, utils.H{"message": "test"})
+			return
+		}
+	}
+	h.Use(New(WithTErr(testErr), WithTiming(2*time.Second), WithTimeoutHandler(func(c context.Context, ctx *app.RequestContext) {
+		ctx.String(http.StatusOK, "request timeout")
+	})))
+	h.GET("/ping/:sleepTime", ping)
+	testTimeoutFunc := func(timeoutStr string) {
+		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
+		resp := w.Result()
+		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
+		assert.DeepEqual(t, "request timeout", string(resp.Body()))
+	}
+	testNormalFunc := func(timeoutStr string) {
+		w := ut.PerformRequest(h.Engine, "GET", "/ping/"+timeoutStr, nil)
+		resp := w.Result()
+		data := map[string]interface{}{}
+		err := json.Unmarshal(resp.Body(), &data)
+		assert.DeepEqual(t, http.StatusOK, resp.StatusCode())
+		assert.Nil(t, err)
+		assert.DeepEqual(t, map[string]interface{}{"message": "test"}, data)
+	}
+	testTimeoutFunc("3000")
+	testNormalFunc("1000")
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration, tErr error) error {
 	timer := time.NewTimer(d)
 	select {
 	case <-ctx.Done():
-		return context.DeadlineExceeded
+		if !timer.Stop() {
+			<-timer.C
+		}
+		return tErr
 	case <-timer.C:
 	}
 	return nil

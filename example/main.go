@@ -33,45 +33,34 @@ import (
 	"github.com/cloudwego/hertz-contrib/timeout"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/utils"
 )
 
 func main() {
 	h := server.Default()
-	defaultTimeout := func(ctx context.Context, c *app.RequestContext) error {
-		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
-		time.Sleep(sleepTime)
-		req, _ := http.NewRequest(http.MethodGet, "https://www.baidu.com", nil)
-		req = req.WithContext(ctx)
-		client := &http.Client{}
-		_, err := client.Do(req)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	newTimeout := func(ctx context.Context, c *app.RequestContext) error {
+	example := func(ctx context.Context, c *app.RequestContext) {
 		sleepTime, _ := time.ParseDuration(c.Param("sleepTime") + "ms")
 		done := make(chan error, 1)
 		go func() {
 			time.Sleep(sleepTime)
-			req, _ := http.NewRequest(http.MethodGet, "https://www.baidu.com", nil)
-			req = req.WithContext(ctx)
-			client := &http.Client{}
-			_, err := client.Do(req)
-			if err != nil {
-				done <- err
-				return
-			}
 			done <- nil
 		}()
 		select {
 		case <-ctx.Done():
-			return context.DeadlineExceeded
+			_ = c.Error(context.DeadlineExceeded)
+			return
 		case err := <-done:
-			return err
+			if err != nil {
+				_ = c.Error(err)
+				return
+			}
+			c.JSON(http.StatusOK, utils.H{"info": "success"})
+			return
 		}
 	}
-	h.GET("/default/:sleepTime", timeout.Default(defaultTimeout, 2*time.Second))
-	h.GET("/new/:sleepTime", timeout.New(newTimeout, 2*time.Second))
+	h.Use(timeout.New(timeout.WithTiming(2*time.Second), timeout.WithTimeoutHandler(func(c context.Context, ctx *app.RequestContext) {
+		ctx.String(http.StatusRequestTimeout, "request timeout")
+	})))
+	h.GET("/ping/:sleepTime", example)
 	h.Spin()
 }

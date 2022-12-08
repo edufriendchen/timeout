@@ -28,29 +28,33 @@ package timeout
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"testing"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/test/assert"
 )
 
-// New implementation of timeout middleware.
-// To use this method, you need to add the following code to the Handler you defined to listen for the context timeout.
-// select { case <-ctx.Done(): _ = c.Error(context.DeadlineExceeded) return }
-func New(opts ...Option) app.HandlerFunc {
-	opt := NewOptions(opts...)
-	return func(ctx context.Context, c *app.RequestContext) {
-		timeoutContext, cancel := context.WithTimeout(ctx, opt.Timing)
-		defer cancel()
-		c.Next(timeoutContext)
-		if errorChain := c.Errors; errorChain != nil && opt.TimeoutHandler != nil {
-			for i := range errorChain {
-				if errors.Is(context.DeadlineExceeded, errorChain[i].Err) || errors.Is(opt.TErr, errorChain[i].Err) {
-					opt.TimeoutHandler(ctx, c)
-					return
-				}
-			}
-			return
-		} else {
-			return
-		}
+func TestDefaultOption(t *testing.T) {
+	opts := NewOptions()
+	assert.DeepEqual(t, Handler, opts.TimeoutHandler)
+	assert.DeepEqual(t, Timing, opts.Timing)
+	assert.DeepEqual(t, TErr, opts.TErr)
+}
+
+func TestNewOption(t *testing.T) {
+	TimeoutHandler := func(ctx context.Context, c *app.RequestContext) {
+		c.String(http.StatusOK, "request timeout")
 	}
+	testErr := errors.New("test")
+	opts := NewOptions(
+		WithTimeoutHandler(TimeoutHandler),
+		WithTiming(2*time.Second),
+		WithTErr(testErr),
+	)
+	assert.DeepEqual(t, fmt.Sprintf("%p", TimeoutHandler), fmt.Sprintf("%p", opts.TimeoutHandler))
+	assert.DeepEqual(t, 2*time.Second, opts.Timing)
+	assert.DeepEqual(t, testErr, opts.TErr)
 }
